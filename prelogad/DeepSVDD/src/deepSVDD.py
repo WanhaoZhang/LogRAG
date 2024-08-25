@@ -57,7 +57,7 @@ class DeepSVDD(object):
         self.net = build_network(net_name)
 
     def train(self, dataset: BaseADDataset, optimizer_name: str = 'adam', lr: float = 0.001, n_epochs: int = 50,
-              lr_milestones: tuple = (), batch_size: int = 128, weight_decay: float = 1e-6, device: str = 'cuda',
+              lr_milestones: tuple = (), batch_size: int = 128, weight_decay: float = 1e-6, device: str = 'cpu',
               n_jobs_dataloader: int = 0):
         """Trains the Deep SVDD model on the training data."""
 

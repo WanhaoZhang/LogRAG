@@ -16,9 +16,10 @@ from openai import OpenAI
 import numpy as np
 from postprocess.prompts import prompt1, prompt2, prompt3, prompt4, prompt5
 import importlib
+import torch, gc
 
 class RAGPostProcessor:
-    def __init__(self, configs, train_data_path):
+    def __init__(self, configs, train_data_path, logger):
         self.train_data_path = train_data_path
         self.llm_name = configs['llm_name']
         self.threshold = configs['threshold']
@@ -26,7 +27,9 @@ class RAGPostProcessor:
         self.api_key = configs['api_key']
         self.api_base = configs['api_base']
         self.persist_directory = configs['persist_directory']
+        self.device = configs['device']
         self.prompt = self._import_prompt(configs['prompt'])
+        self.logger = logger
 
     def _import_prompt(self, prompt_name):
         # 动态导入 postprocess.prompts 模块
@@ -63,13 +66,12 @@ class RAGPostProcessor:
         # 做成Embedding存入到Vector db
         embedding = OpenAIEmbeddings(model="text-embedding-ada-002")
         # 读取训练数据
-        
         if not os.path.exists(self.persist_directory):
             os.mkdir(self.persist_directory)
             
         if not os.listdir(self.persist_directory):
             # 保存到硬盘
-            print('Using embedding...')
+            self.logger.info('Using embedding...')
             vectordb = Chroma.from_texts(
                 texts=normal_log_entries,
                 embedding=embedding,
@@ -77,7 +79,7 @@ class RAGPostProcessor:
             )
         else:
             # 从硬盘load
-            print('Loading from db...')
+            self.logger.info('Loading from db...')
             if self.prompt == "prompt1" or self.prompt == "prompt2":
                 self.persist_directory = "db/none"
             
@@ -106,13 +108,17 @@ class RAGPostProcessor:
 
     def get_local_llm(self, model_path):
         
-        print(f"Loading model: {model_path}")
+        self.logger.info(f"Loading model: {model_path}")
         tokenizer = AutoTokenizer.from_pretrained(model_path, trust_remote_code=True)
         tokenizer.pad_token = tokenizer.eos_token
         tokenizer.padding_side = "right"
 
-        model = AutoModelForCausalLM.from_pretrained(model_path)
-        # model = AutoModelForCausalLM.from_pretrained(model_name).to("cuda:0")
+        # model = AutoModelForCausalLM.from_pretrained(model_path)
+
+        gc.collect()
+        torch.cuda.empty_cache()
+
+        model = AutoModelForCausalLM.from_pretrained(model_path).to(self.device)
 
         text_generation_pipeline = pipeline(
             model=model,
@@ -135,7 +141,7 @@ class RAGPostProcessor:
         # get normal log entries from self.train_data_path
         train_df = pd.read_csv(self.train_data_path)
         train_df = train_df[train_df['Label'] == '-']
-        normal_log_entries = train_df['EventTemplate'].tolist()
+        normal_log_entries = train_df['EventTemplate'].unique().tolist()
         return normal_log_entries
 
     def post_process(self, anomaly_logs_path, test_data_path):
@@ -144,6 +150,7 @@ class RAGPostProcessor:
         
         QA_CHAIN_PROMPT = PromptTemplate.from_template(template=self.prompt)
         normal_log_entries = self.get_normal_log_entries()
+        self.logger.info(f"Normal log templates to embedding: , {len(normal_log_entries)}")
         vector_db = self.get_vectordb(normal_log_entries)
         retriever = self.get_retriever("thr", vector_db)
         qa_chain = RetrievalQA.from_chain_type(
@@ -179,15 +186,15 @@ class RAGPostProcessor:
             try:
                 result = json.loads(content)
             except Exception as e:
-                print('---begin---')
-                print(e)
-                print(content)
-                print('---end-----')
+                self.logger.info('---begin---')
+                self.logger.info(e)
+                self.logger.info(content)
+                self.logger.info('---end-----')
                 prompt = "Please keep only the Json part of the following content, and fill the is_anomaly into the \'is_anomaly\', \
                 fill the reason into the \'reason\' field of the json. The returned content only needs a string in json format, Input:\n\n"
                 prompt_content = prompt + content      
                 content = self.ask_ChatGPT(prompt_content)
-                print("regenerate: "  + content)
+                self.logger.info("regenerate: "  + content)
                 result = json.loads(content)
             # 提取is_anomaly和reason
             is_anomaly = result['is_anomaly']
@@ -213,7 +220,7 @@ class RAGPostProcessor:
         with open(answer_path, 'w') as file:
             json.dump(answer_list, file)
             
-        print(f'Saved results to \n{result_path}\n{answer_path}')
+        self.logger.info(f'Saved results to \n{result_path}\n{answer_path}')
         
         anomaly_templates = df_result[df_result['is_anomaly'] == 1]['EventTemplate']
         filtered_df = pos_df[pos_df['EventTemplate'].isin(anomaly_templates)]

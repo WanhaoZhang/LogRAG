@@ -9,6 +9,7 @@ import logging
 from postprocess import RAG
 import yaml
 from utils.evaluator import evaluate
+import torch
 
 with open('config.yaml', 'r') as file:
     configs = yaml.safe_load(file)
@@ -116,7 +117,7 @@ def main():
     
     # rag postporcessing, get log templates embeddings
     if configs['is_rag']:
-        RagPoster = RAG.RAGPostProcessor(configs, train_data_path=train_log_structed_path)
+        RagPoster = RAG.RAGPostProcessor(configs, train_data_path=train_log_structed_path, logger=logger)
         anomaly_lineid_list = RagPoster.post_process(anomaly_logs_path, test_log_structed_path)
     # print final results
     evaluate(configs, test_log_structed_path, anomaly_lineid_list, logger)

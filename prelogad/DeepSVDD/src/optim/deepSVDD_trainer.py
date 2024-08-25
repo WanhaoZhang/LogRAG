@@ -21,7 +21,7 @@ class DeepSVDDTrainer(BaseTrainer):
         assert objective in ('one-class', 'soft-boundary'), "Objective must be either 'one-class' or 'soft-boundary'."
         self.objective = objective
 
-        self.device = 'cpu'
+        self.device = device 
         # Deep SVDD parameters
         self.R = torch.tensor(R, device=self.device)  # radius R initialized with 0 by default.
         self.c = torch.tensor(c, device=self.device) if c is not None else None
