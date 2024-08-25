@@ -34,7 +34,7 @@ class RAGPostProcessor:
         # 获取对应的 prompt 对象
         return getattr(module, prompt_name)
     def get_llm(self, llm_name):
-        if "gpt-3.5-turbo" in llm_name:
+        if "gpt" in llm_name:
             llm = ChatOpenAI(model_name=llm_name, temperature=0)
         else:
             llm = self.get_local_llm(llm_name)
@@ -216,5 +216,5 @@ class RAGPostProcessor:
         print(f'Saved results to \n{result_path}\n{answer_path}')
         
         anomaly_templates = df_result[df_result['is_anomaly'] == 1]['EventTemplate']
-        filtered_df = test_df[test_df['EventTemplate'].isin(anomaly_templates)]
+        filtered_df = pos_df[pos_df['EventTemplate'].isin(anomaly_templates)]
         return filtered_df['LineId'].tolist()

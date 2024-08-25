@@ -16,6 +16,11 @@ with open('config.yaml', 'r') as file:
 api_key = configs['api_key']
 os.environ["OPENAI_API_BASE"] = configs['api_base']
 os.environ["OPENAI_API_KEY"] = api_key
+
+output_dir = './output'
+if not os.path.exists(output_dir):
+    os.makedirs(output_dir)
+    
 # set logger
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger()
@@ -75,28 +80,21 @@ def anomaly_detection(model_path, test_data_path):
     
     test_dataset = load_dataset(data_path=test_data_path, encoder_path=configs['encoder_path'])
     anomalys, _ = deep_SVDD.test(test_dataset, device='cpu', n_jobs_dataloader=configs['n_jobs_dataloader'])   
-    # (idx, label, score)
-    anomaly_lineid_list = []
-    for item in tqdm(anomalys, desc='saving anomaly LineIds to list'):
-        idx = item[0]
-        lineid = idx 
-        anomaly_lineid_list.append(lineid)
-        
+
+    anomaly_lineid_list = [item[0] for item in tqdm(anomalys, desc='saving anomaly LineIds to list')]
+   
     output_file = 'output/anomaly_logs_detc_by_svdd.csv'
     # 保存deepsvdd检测为异常的
     df_test = pd.read_csv(test_data_path)
-    pos_index = []
-    for item in tqdm(anomalys, desc='saving anomalys detected by svdd to csv'):
-        idx = item[0]
-        pos_index.append(idx)
-    pos_index.sort()
-    pos_df = df_test[df_test["LineId"].isin(pos_index)]
+    
+    pos_df = df_test[df_test["LineId"].isin(anomaly_lineid_list)]
     pos_df.to_csv(output_file, index=False)
     
     return output_file, anomaly_lineid_list
 
 
 def main():
+    logger.info(configs)
     all_df = pd.read_csv(configs['log_structed_path'])
     num_train = int(configs['train_ratio']*len(all_df))
 
