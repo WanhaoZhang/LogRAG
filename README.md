@@ -45,9 +45,12 @@ The raw logs need to be parsed to get a structured log. Here, we use BGL.log_str
 
 **Requirements:**
 
-- Python 3
+- Python 3.8.18
 - NVIDIA GPU + CUDA cuDNN
-- PyTorch 2.3.0
+- PyTorch 1.13.0
+- langchain 0.2.14
+- transformers 4.37.2
+- openai 1.42.0
 
 The required packages are listed in requirements.txt. Install:
 
