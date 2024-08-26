@@ -1,5 +1,5 @@
 # Leveraging RAG-Enhanced Large Language Model for Semi-Supervised Log Anomaly Detection (ISSRE-2024)
-[![DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.13370549.svg)](https://doi.org/10.5281/zenodo.13370549)
+[![DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.13372812.svg)](https://doi.org/10.5281/zenodo.13372812)
 
 ![image.png](lograg.jpg)
 
